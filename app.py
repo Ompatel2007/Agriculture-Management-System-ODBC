@@ -7,19 +7,19 @@ from flask import Flask, request, jsonify, send_from_directory, session, redirec
 
 
 oracledb.init_oracle_client(
-    lib_dir=r"C:\Users\lab1\Downloads\instant_client\instantclient-basic-windows.x64-23.26.3.0.0\instantclient_23_26"
+    lib_dir=r"C:\Users\user\Downloads\instant_client\instantclient-basic-windows.x64-23.26.3.0.0\instantclient_23_26" # your instant client folder path here
 )
 
 app = Flask(__name__)
 
 app.secret_key = os.getenv(
     "FLASK_SECRET_KEY",
-    "fhwiuery7wtriw7e8bvtw784t7vw5b47b5vw87b7uvw5b7we6v87562938b0v12v7913y"
+    "ExampleKey2864871634" # A long random secret key here
 )
 
-DB_USER = os.getenv("ORACLE_USER", "25BCE1047")
-DB_PASSWORD = os.getenv("ORACLE_PASSWORD", "25bce1047")
-DB_DSN = os.getenv("ORACLE_DSN", "172.16.8.54:1521/orcl")
+DB_USER = os.getenv("ORACLE_USER", "Example123") # Your username here
+DB_PASSWORD = os.getenv("ORACLE_PASSWORD", "Example123") # Your password here
+DB_DSN = os.getenv("ORACLE_DSN", "localhost:3000/xe") # Your IP here and service name here
 
 def login_required(route_function):
     @wraps(route_function)
