@@ -76,8 +76,8 @@ Ensure the following software is installed:
 ### Step 1: Clone the repository
 
 ```bash
-git clone <YOUR_GITHUB_REPOSITORY_URL>
-cd <YOUR_PROJECT_FOLDER>
+git clone https://github.com/Ompatel2007/Agriculture-Management-System-ODBC
+cd Agriculture-Management-System-ODBC
 ```
 
 Replace the placeholders with your repository URL and project directory name.
