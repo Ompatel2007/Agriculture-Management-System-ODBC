@@ -13,7 +13,7 @@ A web-based Agriculture Management System built using **Python, Flask, Oracle Da
 7. [User Roles and Permissions](#7-user-roles-and-permissions)
 8. [Business Logic](#8-business-logic)
 9. [Database Schema](#9-database-schema)
-10. [Troubleshooting](#11-troubleshooting)
+10. [Troubleshooting](#10-troubleshooting)
 
 ---
 
