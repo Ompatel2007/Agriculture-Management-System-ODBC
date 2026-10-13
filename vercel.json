@@ -1,7 +1,8 @@
 {
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/", "destination": "/login.html" },
-    { "source": "/agriculture", "destination": "/index.html" }
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/login", "destination": "/index.html" },
+    { "source": "/agriculture", "destination": "/agriculture.html" }
   ]
 }

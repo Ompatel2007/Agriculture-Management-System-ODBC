@@ -216,14 +216,17 @@ def parse_dynamic_fields(cursor, data):
 
 
 @app.route("/")
+@app.route("/login.html")
+@app.route("/index.html")
 def login_page():
-    return send_from_directory(".", "login.html")
+    return send_from_directory(".", "index.html")
 
 
 @app.route("/agriculture")
+@app.route("/agriculture.html")
 @login_required
 def agriculture_page():
-    return send_from_directory(".", "index.html")
+    return send_from_directory(".", "agriculture.html")
 
 
 @app.route("/style.css")

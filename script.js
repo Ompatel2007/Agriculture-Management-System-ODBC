@@ -799,7 +799,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 sessionStorage.setItem("role", result.role);
                 sessionStorage.setItem("username", result.username || username);
 
-                const target = window.location.pathname.endsWith(".html") ? "index.html" : "/agriculture";
+                const target = window.location.pathname.endsWith(".html") ? "agriculture.html" : "/agriculture";
                 window.location.replace(target);
 
             } catch (error) {
@@ -814,7 +814,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    // --- On Dashboard Page (index.html) ---
+    // --- On Dashboard Page (agriculture.html) ---
     const form = byId("recordForm");
     const tbody = byId("recordsTableBody");
     const table = tbody ? tbody.closest("table") : null;
@@ -823,7 +823,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Check login for local mode
     if (!sessionStorage.getItem("loggedIn") && isLocalMode) {
-        const target = window.location.pathname.endsWith(".html") ? "login.html" : "/";
+        const target = window.location.pathname.endsWith(".html") ? "index.html" : "/";
         window.location.replace(target);
         return;
     }
@@ -845,7 +845,7 @@ document.addEventListener("DOMContentLoaded", () => {
             sessionStorage.removeItem("loggedIn");
             sessionStorage.removeItem("role");
             sessionStorage.removeItem("username");
-            const target = window.location.pathname.endsWith(".html") ? "login.html" : "/";
+            const target = window.location.pathname.endsWith(".html") ? "index.html" : "/";
             window.location.replace(target);
         }
     });
@@ -984,7 +984,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const response = await fetchWithTimeout("/records");
 
             if (response.status === 401) {
-                const target = window.location.pathname.endsWith(".html") ? "login.html" : "/";
+                const target = window.location.pathname.endsWith(".html") ? "index.html" : "/";
                 window.location.replace(target);
                 return;
             }
