@@ -118,6 +118,8 @@
                             placeholder="e.g. 40"
                         >
                     </label>
+
+                    <div id="dynamicFormFields" style="display: contents;"></div>
                 </div>
 
                 <div class="calculation-strip">
@@ -271,6 +273,20 @@
 
                     <button class="button button-primary" type="submit">
                         Rename Column
+                    </button>
+                </form>
+
+                <!-- Delete Column -->
+                <form id="deleteColumnForm">
+                    <label>
+                        Column to delete
+                        <select id="deleteColumnName" required>
+                            <option value="">Select column</option>
+                        </select>
+                    </label>
+
+                    <button class="button button-danger" type="submit">
+                        Delete Column
                     </button>
                 </form>
             </div>

@@ -1,9 +1,11 @@
 
 const byId = (id) => document.getElementById(id);
+let availableColumnMeta = [];
+let currentExtraColumns = [];
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    
+
     const form = byId("recordForm");
     const tbody = byId("recordsTableBody");
     const table = tbody.closest("table");
@@ -98,10 +100,121 @@ document.addEventListener("DOMContentLoaded", () => {
         return result;
     }
 
+    window.loadRecords = loadRecords;
+
+    function renderDynamicFormFields(extraColumns = []) {
+        const container = byId("dynamicFormFields");
+        if (!container) return;
+
+        const currentVals = {};
+        container.querySelectorAll("input").forEach(input => {
+            const col = input.getAttribute("data-col-name");
+            if (col) {
+                currentVals[col] = input.value;
+            }
+        });
+
+        container.replaceChildren();
+
+        if (!isAdmin || !Array.isArray(extraColumns) || extraColumns.length === 0) {
+            return;
+        }
+
+        extraColumns.forEach(col => {
+            const label = document.createElement("label");
+            label.className = "dynamic-col-field";
+
+            const colMeta = Array.isArray(availableColumnMeta)
+                ? availableColumnMeta.find(c => c.name === col)
+                : null;
+
+            const defText = colMeta ? ` (${colMeta.definition})` : "";
+
+            const textSpan = document.createElement("span");
+            textSpan.textContent = col;
+            label.appendChild(textSpan);
+
+            // if (defText) {
+            //     const defSpan = document.createElement("span");
+            //     defSpan.className = "muted";
+            //     defSpan.style.fontWeight = "normal";
+            //     defSpan.style.fontSize = "0.75rem";
+            //     defSpan.textContent = defText;
+            //     label.appendChild(defSpan);
+            // }
+
+            const input = document.createElement("input");
+            input.id = `dyn_col_${col}`;
+            input.name = `dyn_${col}`;
+            input.setAttribute("data-col-name", col);
+
+            if (colMeta && colMeta.type === "NUMBER") {
+                input.type = "number";
+                input.step = "any";
+                input.placeholder = "Enter number";
+            } else if (colMeta && colMeta.type === "DATE") {
+                input.type = "date";
+            } else {
+                input.type = "text";
+                input.placeholder = "Enter value";
+            }
+
+            if (currentVals[col] !== undefined) {
+                input.value = currentVals[col];
+            }
+
+            label.appendChild(input);
+            container.appendChild(label);
+        });
+    }
+
+    window.renderDynamicFormFields = renderDynamicFormFields;
+
+    function renderTableHeader(extraColumns = []) {
+        const thead = table ? table.querySelector("thead") : null;
+        if (!thead) return;
+
+        let tr = thead.querySelector("tr");
+        if (!tr) {
+            tr = document.createElement("tr");
+            thead.appendChild(tr);
+        }
+
+        tr.innerHTML = `
+            <th>Farmer ID</th>
+            <th>Name</th>
+            <th>Gender</th>
+            <th>Phone</th>
+            <th>Crop</th>
+            <th>Production</th>
+            <th>Price/unit</th>
+            <th>Total value</th>
+            <th>Production level</th>
+            <th>Farmer status</th>
+        `;
+
+        if (isAdmin && Array.isArray(extraColumns)) {
+            extraColumns.forEach(col => {
+                const th = document.createElement("th");
+                th.textContent = col;
+                tr.appendChild(th);
+            });
+        }
+
+        const actionTh = document.createElement("th");
+        actionTh.className = "action-header";
+        actionTh.textContent = "Actions";
+        if (!isAdmin) {
+            actionTh.classList.add("hidden");
+        }
+        tr.appendChild(actionTh);
+    }
+
     async function loadRecords() {
+        const colCount = table?.querySelectorAll("thead th")?.length || (isAdmin ? 11 : 10);
         tbody.innerHTML = `
             <tr>
-                <td colspan="${isAdmin ? 11 : 10}" class="empty-cell">
+                <td colspan="${colCount}" class="empty-cell">
                     Loading records…
                 </td>
             </tr>
@@ -122,9 +235,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const result = await readJsonResponse(response);
             const records = result.records;
+            const extraColumns = Array.isArray(result.extra_columns) ? result.extra_columns : [];
 
             role = result.role;
             isAdmin = role === "admin";
+            currentExtraColumns = extraColumns;
 
             if (!Array.isArray(records)) {
                 throw new Error("Unexpected response: records must be an array.");
@@ -135,12 +250,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 await loadColumns();
             }
 
+            renderTableHeader(extraColumns);
+            renderDynamicFormFields(extraColumns);
+
             tbody.replaceChildren();
+
+            const totalCols = 10 + (isAdmin ? extraColumns.length + 1 : 0);
 
             if (records.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="${isAdmin ? 11 : 10}" class="empty-cell">
+                        <td colspan="${totalCols}" class="empty-cell">
                             No records yet. Add your first crop above.
                         </td>
                     </tr>
@@ -186,22 +306,40 @@ document.addEventListener("DOMContentLoaded", () => {
                     row.appendChild(cell);
                 });
 
-                const actions = document.createElement("td");
-                actions.className = "action-cell";
+                if (isAdmin && Array.isArray(extraColumns)) {
+                    extraColumns.forEach(col => {
+                        const cell = document.createElement("td");
+                        const val = record[col] !== undefined
+                            ? record[col]
+                            : (record.extra_fields ? record.extra_fields[col] : null);
 
-                const editButton = document.createElement("button");
-                editButton.type = "button";
-                editButton.className = "button button-small button-light";
-                editButton.textContent = "Update";
-                editButton.addEventListener("click", () => startEdit(record));
+                        if (val === null || val === undefined || val === "") {
+                            cell.textContent = "null";
+                            cell.className = "null-value";
+                        } else {
+                            cell.textContent = String(val);
+                        }
 
-                const deleteButton = document.createElement("button");
-                deleteButton.type = "button";
-                deleteButton.className = "button button-small button-danger";
-                deleteButton.textContent = "Delete";
-                deleteButton.addEventListener("click", () => deleteRecord(record));
+                        row.appendChild(cell);
+                    });
+                }
 
                 if (isAdmin) {
+                    const actions = document.createElement("td");
+                    actions.className = "action-cell";
+
+                    const editButton = document.createElement("button");
+                    editButton.type = "button";
+                    editButton.className = "button button-small button-light";
+                    editButton.textContent = "Update";
+                    editButton.addEventListener("click", () => startEdit(record));
+
+                    const deleteButton = document.createElement("button");
+                    deleteButton.type = "button";
+                    deleteButton.className = "button button-small button-danger";
+                    deleteButton.textContent = "Delete";
+                    deleteButton.addEventListener("click", () => deleteRecord(record));
+
                     actions.append(editButton, deleteButton);
                     row.appendChild(actions);
                 }
@@ -211,9 +349,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             console.log(`[UI] Loaded ${records.length} records.`);
         } catch (error) {
+            const errCols = table?.querySelectorAll("thead th")?.length || (isAdmin ? 11 : 10);
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="${isAdmin ? 11 : 10}" class="empty-cell">
+                    <td colspan="${errCols}" class="empty-cell">
                         Could not load records.
                     </td>
                 </tr>
@@ -236,8 +375,8 @@ document.addEventListener("DOMContentLoaded", () => {
         return badge;
     }
 
-    
-    
+
+
     function applyRolePermissions(role) {
         const admin = role === "admin";
 
@@ -293,6 +432,19 @@ document.addEventListener("DOMContentLoaded", () => {
             data.row_id = rowId;
         }
 
+        const extraFields = {};
+        if (Array.isArray(currentExtraColumns)) {
+            currentExtraColumns.forEach(col => {
+                const input = byId(`dyn_col_${col}`);
+                if (input) {
+                    const rawVal = input.value.trim();
+                    extraFields[col] = rawVal !== "" ? rawVal : null;
+                    data[col] = extraFields[col];
+                }
+            });
+        }
+        data.extra_fields = extraFields;
+
         const button = byId("saveButton");
         button.disabled = true;
         button.textContent = rowId ? "Updating…" : "Saving…";
@@ -341,6 +493,19 @@ document.addEventListener("DOMContentLoaded", () => {
         byId("cropName").value = record.crop_name || "";
         byId("cropVol").value = record.crop_vol ?? "";
         byId("price").value = record.price ?? "";
+
+        // Populate dynamic column fields
+        if (Array.isArray(currentExtraColumns)) {
+            currentExtraColumns.forEach(col => {
+                const input = byId(`dyn_col_${col}`);
+                if (input) {
+                    const val = record[col] !== undefined
+                        ? record[col]
+                        : (record.extra_fields ? record.extra_fields[col] : null);
+                    input.value = (val !== null && val !== undefined) ? val : "";
+                }
+            });
+        }
 
         byId("formHeading").textContent = "Update crop record";
         byId("formModeBadge").textContent = "EDITING RECORD";
@@ -394,6 +559,11 @@ document.addEventListener("DOMContentLoaded", () => {
         byId("formModeBadge").textContent = "NEW RECORD";
         byId("saveButton").textContent = "Add crop record";
         byId("cancelButton").classList.add("hidden");
+
+        const dynInputs = document.querySelectorAll("#dynamicFormFields input, #dynamicFormFields select");
+        dynInputs.forEach(input => {
+            input.value = "";
+        });
 
         updatePreview();
 
@@ -478,6 +648,11 @@ async function loadColumns() {
             throw new Error(data.message || "Could not load columns.");
         }
 
+        availableColumnMeta = Array.isArray(data.columns) ? data.columns : [];
+        if (typeof window.renderDynamicFormFields === "function") {
+            window.renderDynamicFormFields(currentExtraColumns);
+        }
+
         ["modifyColumnName", "renameColumnName"].forEach(id => {
             const select = document.getElementById(id);
             if (!select) return;
@@ -500,9 +675,10 @@ async function loadColumns() {
                 if (column.protected) {
                     option.disabled = true;
                     option.textContent += " — protected";
+                } else {
+                    select.appendChild(option);
                 }
 
-                select.appendChild(option);
             });
 
             if (
@@ -513,6 +689,44 @@ async function loadColumns() {
                 select.value = previousValue;
             }
         });
+
+        // For Delete: list columns, but protected (pre-loaded) columns cannot be deleted
+        const deleteSelect = document.getElementById("deleteColumnName");
+        if (deleteSelect) {
+            const previousValue = deleteSelect.value;
+            deleteSelect.replaceChildren();
+
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = "Select a column to delete";
+            deleteSelect.appendChild(placeholder);
+
+            const hasDeletable = data.columns.some(c => !c.protected);
+
+            data.columns.forEach(column => {
+                const option = document.createElement("option");
+                option.value = column.name;
+                if (column.protected) {
+                    option.disabled = true;
+                    option.textContent = `${column.name} — pre-loaded (cannot delete)`;
+                } else {
+                    option.textContent = `${column.name} (${column.definition})`;
+                    deleteSelect.appendChild(option);
+                }
+            });
+
+            if (!hasDeletable) {
+                placeholder.textContent = "No columns to delete";
+            }
+
+            if (
+                [...deleteSelect.options].some(option =>
+                    option.value === previousValue && !option.disabled
+                )
+            ) {
+                deleteSelect.value = previousValue;
+            }
+        }
     } catch (error) {
         showStructureMessage(error.message, true);
     }
@@ -543,7 +757,9 @@ async function submitStructureRequest(url, payload) {
         await loadColumns();
 
         // Refresh crop records if your existing function is available.
-        if (typeof loadRecords === "function") {
+        if (typeof window.loadRecords === "function") {
+            await window.loadRecords();
+        } else if (typeof loadRecords === "function") {
             await loadRecords();
         }
 
@@ -621,6 +837,33 @@ document.getElementById("renameColumnForm")?.addEventListener(
         const success = await submitStructureRequest(
             "/api/columns/rename",
             { old_name, new_name }
+        );
+
+        if (success) this.reset();
+    }
+);
+
+
+// DELETE COLUMN
+document.getElementById("deleteColumnForm")?.addEventListener(
+    "submit",
+    async function (event) {
+        event.preventDefault();
+
+        const name = document.getElementById("deleteColumnName").value;
+
+        if (!name) {
+            showStructureMessage("Select a newly created column to delete.", true);
+            return;
+        }
+
+        if (!window.confirm(`Are you sure you want to delete column "${name}"? All data in this column will be permanently removed.`)) {
+            return;
+        }
+
+        const success = await submitStructureRequest(
+            "/api/columns/delete",
+            { name }
         );
 
         if (success) this.reset();

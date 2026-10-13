@@ -146,6 +146,23 @@ button {
     gap: 18px;
 }
 
+.panel > .form-grid > form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.panel > .form-grid > form .button {
+    margin-top: auto;
+}
+
+.null-value {
+    color: #8a968d;
+    font-style: italic;
+    font-family: monospace;
+    font-size: 0.85em;
+}
+
 label {
     display: flex;
     flex-direction: column;

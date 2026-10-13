@@ -1,4 +1,5 @@
 import os
+import datetime
 from decimal import Decimal, InvalidOperation
 import re
 from functools import wraps
@@ -7,7 +8,7 @@ from flask import Flask, request, jsonify, send_from_directory, session, redirec
 
 
 oracledb.init_oracle_client(
-    lib_dir=r"C:\Users\user\Downloads\instant_client\instantclient-basic-windows.x64-23.26.3.0.0\instantclient_23_26" # your instant client folder path here
+    lib_dir=r"C:\Users\patel\OneDrive\Documents\Projects\DBMS_ODBC\instantclient_23_26"
 )
 
 app = Flask(__name__)
@@ -17,9 +18,24 @@ app.secret_key = os.getenv(
     "ExampleKey2864871634" # A long random secret key here
 )
 
-DB_USER = os.getenv("ORACLE_USER", "Example123") # Your username here
-DB_PASSWORD = os.getenv("ORACLE_PASSWORD", "Example123") # Your password here
-DB_DSN = os.getenv("ORACLE_DSN", "localhost:3000/xe") # Your IP here and service name here
+DB_USER = os.getenv("ORACLE_USER", "Om") # Your username here
+DB_PASSWORD = os.getenv("ORACLE_PASSWORD", "Test123") # Your password here
+DB_DSN = os.getenv("ORACLE_DSN", "localhost:1521/xe") # Your IP here and service name here
+
+CORE_COLUMNS = {
+    "FARMER_ID", "NAME", "GENDER", "PHONE",
+    "CROP_NAME", "CROP_VOL", "PRICE",
+    "TOTAL_VALUE", "PRODUCTION_LEVEL", "FARMER_STATUS"
+}
+
+ALLOWED_TYPES = {"VARCHAR2", "CHAR", "NUMBER", "DATE"}
+
+
+def valid_column_name(name):
+    return bool(
+        name
+        and re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,29}", name)
+    )
 
 def login_required(route_function):
     @wraps(route_function)
@@ -152,6 +168,53 @@ def parse_record(data):
     }
 
 
+def parse_dynamic_fields(cursor, data):
+    cursor.execute("""
+        SELECT COLUMN_NAME, DATA_TYPE
+        FROM USER_TAB_COLUMNS
+        WHERE TABLE_NAME = 'AGRICULTURE'
+    """)
+    db_cols = {row[0]: row[1] for row in cursor.fetchall()}
+    dynamic_cols = {
+        col: dtype for col, dtype in db_cols.items()
+        if col not in CORE_COLUMNS and valid_column_name(col)
+    }
+
+    extra_fields = data.get("extra_fields") or {}
+    results = {}
+
+    for col, dtype in dynamic_cols.items():
+        if col in extra_fields:
+            val = extra_fields[col]
+        elif col in data:
+            val = data[col]
+        elif col.lower() in data:
+            val = data[col.lower()]
+        else:
+            continue
+
+        if val is None or (isinstance(val, str) and val.strip() == ""):
+            results[col] = None
+            continue
+
+        dtype = (dtype or "").upper()
+        if dtype == "NUMBER":
+            try:
+                results[col] = Decimal(str(val).strip())
+            except (InvalidOperation, TypeError, ValueError):
+                raise ValueError(f"Enter a valid number for column {col}.")
+        elif dtype == "DATE":
+            val_str = str(val).strip()
+            try:
+                results[col] = datetime.datetime.strptime(val_str[:10], "%Y-%m-%d").date()
+            except Exception:
+                raise ValueError(f"Enter a valid date (YYYY-MM-DD) for column {col}.")
+        else:
+            results[col] = str(val).strip()
+
+    return results
+
+
 @app.route("/")
 def login_page():
     return send_from_directory(".", "login.html")
@@ -244,21 +307,40 @@ def get_records():
         connection = get_connection()
         cursor = connection.cursor()
 
-        query = """
-            SELECT
-                ROWIDTOCHAR(ROWID),
-                FARMER_ID,
-                NAME,
-                GENDER,
-                PHONE,
-                CROP_NAME,
-                CROP_VOL,
-                PRICE,
-                TOTAL_VALUE,
-                PRODUCTION_LEVEL,
-                FARMER_STATUS
-            FROM AGRICULTURE
-        """
+        is_admin = session.get("role") == "admin"
+        extra_columns = []
+
+        if is_admin:
+            cursor.execute("""
+                SELECT COLUMN_NAME
+                FROM USER_TAB_COLUMNS
+                WHERE TABLE_NAME = 'AGRICULTURE'
+                ORDER BY COLUMN_ID
+            """)
+            all_cols = [row[0] for row in cursor.fetchall()]
+            extra_columns = [
+                col for col in all_cols
+                if col not in CORE_COLUMNS and valid_column_name(col)
+            ]
+
+        select_cols = [
+            "ROWIDTOCHAR(ROWID)",
+            "FARMER_ID",
+            "NAME",
+            "GENDER",
+            "PHONE",
+            "CROP_NAME",
+            "CROP_VOL",
+            "PRICE",
+            "TOTAL_VALUE",
+            "PRODUCTION_LEVEL",
+            "FARMER_STATUS"
+        ]
+
+        if is_admin and extra_columns:
+            select_cols.extend(extra_columns)
+
+        query = f"SELECT {', '.join(select_cols)} FROM AGRICULTURE"
 
         params = {}
 
@@ -277,7 +359,7 @@ def get_records():
         records = []
 
         for row in rows:
-            records.append({
+            rec = {
                 "row_id": row[0],
                 "farmer_id": row[1],
                 "name": row[2],
@@ -289,11 +371,25 @@ def get_records():
                 "total_value": row[8],
                 "production_level": row[9],
                 "farmer_status": row[10]
-            })
+            }
+
+            if is_admin and extra_columns:
+                rec["extra_fields"] = {}
+                for idx, col in enumerate(extra_columns):
+                    val = row[11 + idx]
+                    if isinstance(val, Decimal):
+                        val = float(val)
+                    elif hasattr(val, "isoformat"):
+                        val = val.isoformat()
+                    rec[col] = val
+                    rec["extra_fields"][col] = val
+
+            records.append(rec)
 
         return jsonify({
             "success": True,
             "records": records,
+            "extra_columns": extra_columns if is_admin else [],
             "role": session["role"]
         })
 
@@ -341,34 +437,45 @@ def save_record():
             )
         )
 
+        dynamic_values = parse_dynamic_fields(cursor, data)
+
+        insert_cols = [
+            "FARMER_ID",
+            "NAME",
+            "GENDER",
+            "PHONE",
+            "CROP_NAME",
+            "CROP_VOL",
+            "PRICE",
+            "TOTAL_VALUE",
+            "PRODUCTION_LEVEL",
+            "FARMER_STATUS"
+        ]
+        insert_params = [
+            record["farmer_id"],
+            record["name"],
+            record["gender"],
+            record["phone"],
+            record["crop_name"],
+            record["crop_vol"],
+            record["price"],
+            record["total_value"],
+            record["production_level"],
+            "INACTIVE"
+        ]
+
+        for col, val in dynamic_values.items():
+            insert_cols.append(col)
+            insert_params.append(val)
+
+        placeholders = [f":{i+1}" for i in range(len(insert_params))]
+
         cursor.execute(
-            """
-            INSERT INTO AGRICULTURE (
-                FARMER_ID,
-                NAME,
-                GENDER,
-                PHONE,
-                CROP_NAME,
-                CROP_VOL,
-                PRICE,
-                TOTAL_VALUE,
-                PRODUCTION_LEVEL,
-                FARMER_STATUS
-            )
-            VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10)
+            f"""
+            INSERT INTO AGRICULTURE ({', '.join(insert_cols)})
+            VALUES ({', '.join(placeholders)})
             """,
-            (
-                record["farmer_id"],
-                record["name"],
-                record["gender"],
-                record["phone"],
-                record["crop_name"],
-                record["crop_vol"],
-                record["price"],
-                record["total_value"],
-                record["production_level"],
-                "INACTIVE"
-            )
+            insert_params
         )
 
         total_production, status = recalculate_farmer_status(
@@ -422,6 +529,8 @@ def update_record():
         conn = get_connection()
         cursor = conn.cursor()
 
+        dynamic_values = parse_dynamic_fields(cursor, data)
+
         cursor.execute(
             """
             SELECT FARMER_ID
@@ -440,32 +549,43 @@ def update_record():
 
         old_farmer_id = int(previous[0])
 
+        update_clauses = [
+            "FARMER_ID = :1",
+            "NAME = :2",
+            "GENDER = :3",
+            "PHONE = :4",
+            "CROP_NAME = :5",
+            "CROP_VOL = :6",
+            "PRICE = :7",
+            "TOTAL_VALUE = :8",
+            "PRODUCTION_LEVEL = :9"
+        ]
+        params = [
+            record["farmer_id"],
+            record["name"],
+            record["gender"],
+            record["phone"],
+            record["crop_name"],
+            record["crop_vol"],
+            record["price"],
+            record["total_value"],
+            record["production_level"]
+        ]
+
+        for col, val in dynamic_values.items():
+            params.append(val)
+            update_clauses.append(f"{col} = :{len(params)}")
+
+        params.append(row_id)
+        row_id_param_idx = len(params)
+
         cursor.execute(
-            """
+            f"""
             UPDATE AGRICULTURE
-            SET FARMER_ID = :1,
-                NAME = :2,
-                GENDER = :3,
-                PHONE = :4,
-                CROP_NAME = :5,
-                CROP_VOL = :6,
-                PRICE = :7,
-                TOTAL_VALUE = :8,
-                PRODUCTION_LEVEL = :9
-            WHERE ROWID = CHARTOROWID(:10)
+            SET {', '.join(update_clauses)}
+            WHERE ROWID = CHARTOROWID(:{row_id_param_idx})
             """,
-            (
-                record["farmer_id"],
-                record["name"],
-                record["gender"],
-                record["phone"],
-                record["crop_name"],
-                record["crop_vol"],
-                record["price"],
-                record["total_value"],
-                record["production_level"],
-                row_id
-            )
+            params
         )
 
         # Keep the farmer details consistent across all their crop rows.
@@ -568,20 +688,6 @@ def delete_record(row_id):
         if conn is not None:
             conn.close()
 
-CORE_COLUMNS = {
-    "FARMER_ID", "NAME", "GENDER", "PHONE",
-    "CROP_NAME", "CROP_VOL", "PRICE",
-    "TOTAL_VALUE", "PRODUCTION_LEVEL", "FARMER_STATUS"
-}
-
-ALLOWED_TYPES = {"VARCHAR2", "CHAR", "NUMBER", "DATE"}
-
-
-def valid_column_name(name):
-    return bool(
-        name
-        and re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,29}", name)
-    )
 
 
 def get_column_type(data_type, size):
@@ -840,6 +946,60 @@ def rename_column():
     finally:
         if connection:
             connection.close()
+
+
+@app.route("/api/columns/delete", methods=["POST", "DELETE"])
+@app.route("/api/columns/<column_name>", methods=["DELETE"])
+@admin_required
+def delete_column(column_name=None):
+    connection = None
+
+    try:
+        if column_name:
+            name = column_name.upper().strip()
+        else:
+            data = request.get_json(silent=True) or {}
+            name = (data.get("name") or "").upper().strip()
+
+        if not valid_column_name(name):
+            return jsonify({
+                "success": False,
+                "message": "Invalid column name."
+            }), 400
+
+        if name in CORE_COLUMNS:
+            return jsonify({
+                "success": False,
+                "message": "Deleting pre-loaded application columns is disabled."
+            }), 400
+
+        connection = get_connection()
+        cursor = connection.cursor()
+
+        if not column_exists(cursor, name):
+            return jsonify({
+                "success": False,
+                "message": f"Column {name} does not exist."
+            }), 404
+
+        cursor.execute(
+            f"ALTER TABLE AGRICULTURE DROP COLUMN {name}"
+        )
+        connection.commit()
+
+        return jsonify({
+            "success": True,
+            "message": f"Column {name} deleted successfully."
+        })
+
+    except Exception as e:
+        if connection:
+            connection.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        if connection:
+            connection.close()
+
 
 @app.route("/api/logout", methods=["POST"])
 def logout():
