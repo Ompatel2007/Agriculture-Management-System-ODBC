@@ -1,348 +1,240 @@
 # Agriculture Management System
 
-A web-based Agriculture Management System built using **Python, Flask, Oracle Database, HTML, CSS, and JavaScript**. The application allows administrators to manage farmer and crop records while providing farmers with read-only access to their own information.
+## Overview
+
+The **Agriculture Management System** is a web-based application developed using Python, Flask, and Oracle Database to manage agricultural production records. It allows administrators to manage farmer and crop information, calculate production values, classify production levels, and monitor farmer activity. Farmers can log in to view their own records.
 
 ## Table of Contents
 
-1. [Database Connection Configuration](#1-database-connection-configuration)
-2. [Prerequisites](#2-prerequisites)
-3. [Installation](#3-installation)
-4. [Database Setup](#4-database-setup)
-5. [Running the Project](#5-running-the-project)
-6. [Features](#6-features)
-7. [User Roles and Permissions](#7-user-roles-and-permissions)
-8. [Business Logic](#8-business-logic)
-9. [Database Schema](#9-database-schema)
-10. [Troubleshooting](#10-troubleshooting)
+1. [Installation and Setup](#1-installation-and-setup)
+2. [Database Configuration](#2-database-configuration)
+3. [Features](#3-features)
+4. [Technology Stack](#4-technology-stack)
+5. [Prerequisites](#5-prerequisites)
+6. [Production Classification Rules](#6-production-classification-rules)
+7. [Running the Application](#7-running-the-application)
+8. [Login and User Roles](#8-login-and-user-roles)
+9. [Troubleshooting](#9-troubleshooting)
 
----
+## 1. Installation and Setup
 
-## 1. Database Connection Configuration
+Follow these steps to install and run the Agriculture Management System locally.
 
-Before running the application, configure the Oracle Database connection in `app.py`.
-
-Locate the database configuration section and update the following values according to your Oracle Database installation:
-
-```python
-DB_USER = os.getenv("DB_USER", "Example123")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "Example123")
-DB_DSN = os.getenv("DB_DSN", "localhost:1521/xe")
-```
-
-Change the default username, password, and DSN to match your database credentials.
-
-| Parameter | Description | Example |
-|---|---|---|
-| `DB_USER` | Oracle database username | `Example123` |
-| `DB_PASSWORD` | Password for the database user | `Example123` |
-| `DB_DSN` | Oracle connection identifier | `localhost:1521/xe` |
-
-For a local Oracle Database XE installation, `localhost:1521/xe` is a common DSN configuration. Adjust it if your database uses a different host, port, or service name.
-
-**Important:** The database user must have the required permissions to access and modify the `AGRICULTURE` table and manage its structure if you intend to use the table-management features.
-
-### Oracle Instant Client
-
-This project uses the `oracledb` Python library in Thick mode. Install Oracle Instant Client and configure its location in `app.py` if your setup requires it.
-
-For example, on Windows:
-
-```python
-oracledb.init_oracle_client(
-    lib_dir=r"C:\path\to\instantclient"
-)
-```
-
-Replace the example path with the actual location of your Oracle Instant Client installation. Ensure the installed client is compatible with your Oracle Database and operating system.
-
-Oracle Instant Client is a separate system dependency and is not installed through `requirements.txt`.
-
----
-
-## 2. Prerequisites
-
-Ensure the following software is installed:
-
-- **Python 3.10 or later** (use a version supported by your installed dependencies).
-- **Oracle Database XE 11g** or a compatible Oracle Database installation.
-- **Oracle Instant Client**, when required for Thick mode.
-- **Git**, for cloning and managing the repository.
-- A web browser to access the application.
-
----
-
-## 3. Installation
-
-### Step 1: Clone the repository
+### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/Ompatel2007/Agriculture-Management-System-ODBC
+git clone https://github.com/Ompatel2007/Agriculture-Management-System-ODBC.git
 cd Agriculture-Management-System-ODBC
 ```
 
-Replace the placeholders with your repository URL and project directory name.
+### Step 2: Create a Virtual Environment (Optional)
 
-### Step 2: Create a virtual environment (recommended)
-
-On Windows:
+Create an isolated Python environment to manage the project's dependencies.
 
 ```bash
 python -m venv venv
+```
+
+Activate the environment:
+
+**Windows:**
+```bash
 venv\Scripts\activate
 ```
 
-On Linux or macOS:
-
+**Linux/macOS:**
 ```bash
-python3 -m venv venv
 source venv/bin/activate
 ```
 
-### Step 3: Install the required Python libraries
+### Step 3: Install Dependencies
 
-The project includes a `requirements.txt` file containing the Python dependencies.
-
-Run:
+Install the required Python packages using `requirements.txt`.
 
 ```bash
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
-The primary Python dependencies are:
+### Step 4: Configure Oracle Instant Client
 
-- `Flask` — web application framework and HTTP routing.
-- `oracledb` — connectivity between Python and Oracle Database.
+The application uses the `oracledb` Python package to connect to Oracle Database. If the application is configured to use Thick mode, install Oracle Instant Client and update the client library path in `app.py` to match your system.
 
----
+Ensure that the installed Oracle Instant Client architecture matches your Python installation.
 
-## 4. Database Setup
+### Step 5: Configure Database Credentials
 
-### Step 1: Start Oracle Database
+Set the environment variables required for the Oracle connection:
 
-Ensure that your Oracle Database service is running and accessible using your configured DSN.
-
-### Step 2: Connect to Oracle
-
-Open SQL*Plus or another Oracle SQL client and connect using the database credentials configured in `app.py`.
-
-### Step 3: Create the AGRICULTURE table
-
-Execute the following SQL statement:
-
-```sql
-CREATE TABLE AGRICULTURE (
-    FARMER_ID         NUMBER,
-    NAME              VARCHAR2(100) NOT NULL,
-    GENDER            VARCHAR2(10),
-    PHONE             VARCHAR2(15),
-    CROP_NAME         VARCHAR2(100) NOT NULL,
-    CROP_VOL          NUMBER(10,2),
-    PRICE             NUMBER(10,2),
-    TOTAL_VALUE       NUMBER(12,2),
-    PRODUCTION_LEVEL  VARCHAR2(10),
-    FARMER_STATUS     VARCHAR2(10)
-);
+**Windows Command Prompt:**
+```cmd
+set ORACLE_USER=your_username
+set ORACLE_PASSWORD=your_password
+set ORACLE_DSN=localhost:1521/xe
 ```
 
-### Step 4: Verify the table
-
-```sql
-DESC AGRICULTURE;
+**Linux/macOS:**
+```bash
+export ORACLE_USER=your_username
+export ORACLE_PASSWORD=your_password
+export ORACLE_DSN=localhost:1521/xe
 ```
 
-Check the existing records:
+Replace the example values with your actual Oracle Database credentials and connection details.
 
-```sql
-SELECT * FROM AGRICULTURE;
-```
+## 2. Database Configuration
 
-If the table already exists, do not execute the `CREATE TABLE` statement again. Ensure the existing table has the columns expected by the application.
+The application uses Oracle Database to store and manage agricultural records.
 
----
+The primary table is `AGRICULTURE`, which contains the following fields:
 
-## 5. Running the Project
+| Column | Description |
+|---|---|
+| `FARMER_ID` | Unique identifier for the farmer record |
+| `NAME` | Farmer's name |
+| `GENDER` | Farmer's gender |
+| `PHONE` | Contact number |
+| `CROP_NAME` | Name of the crop |
+| `CROP_VOL` | Quantity of crop produced |
+| `PRICE` | Price per unit |
+| `TOTAL_VALUE` | Total production value |
+| `PRODUCTION_LEVEL` | Production classification |
+| `FARMER_STATUS` | Farmer's activity status |
 
-After configuring the database and installing the dependencies, start the application from the project directory:
+Ensure that the Oracle Database instance is running and that the configured user has the required database permissions.
+
+The application also supports dynamic management of additional table columns through the administrator interface.
+
+## 3. Features
+
+### Farmer and Crop Management
+- Add, view, update, and delete agricultural records through the administrator interface.
+- Store farmer details, crop information, production quantities, and prices.
+- Calculate total production value automatically.
+
+### Dynamic Column Management
+- Add additional columns to the database table.
+- Modify supported column datatypes and sizes.
+- Rename or delete additional columns.
+- Display additional columns dynamically in the administrator's record form and table.
+
+Supported datatypes include `VARCHAR2`, `CHAR`, `NUMBER`, and `DATE`, subject to the application's validation rules.
+
+Core columns are protected from modification, renaming, and deletion through the dynamic column management interface.
+
+### Production Classification
+- Classify production based on crop quantity.
+- Determine farmer activity status based on total crop quantity.
+- Recalculate relevant values when records are added or deleted.
+
+### Role-Based Access
+- Administrators can manage agricultural records.
+- Farmers can view their own records in read-only mode.
+
+## 4. Technology Stack
+
+| Technology | Purpose |
+|---|---|
+| Python | Application logic |
+| Flask | Web application framework |
+| Oracle Database | Data storage and management |
+| `oracledb` | Python connectivity to Oracle Database |
+| HTML | Webpage structure |
+| CSS | Styling and layout |
+| JavaScript | Client-side interactions |
+
+## 5. Prerequisites
+
+Before running the application, ensure that the following are available:
+
+- Python installed on your system.
+- Oracle Database installed and running.
+- Oracle Instant Client, if required by the configured Thick-mode connection.
+- `pip` for installing Python dependencies.
+- A web browser.
+- Appropriate Oracle Database credentials and permissions.
+
+## 6. Production Classification Rules
+
+The application uses production quantity to classify production levels.
+
+| Production Quantity | Production Level |
+|---|---|
+| Below 500 | `LOW` |
+| 500–1000, inclusive | `MEDIUM` |
+| Above 1000 | `HIGH` |
+
+### Farmer Status
+
+Farmer activity status is determined by total crop quantity:
+
+| Total Crop Quantity | Farmer Status |
+|---|---|
+| 500 or more | `ACTIVE` |
+| Below 500 | `INACTIVE` |
+
+Relevant status values are recalculated when agricultural records are added or deleted.
+
+## 7. Running the Application
+
+After installing dependencies and configuring the database connection, start the Flask application from the project directory:
 
 ```bash
 python app.py
 ```
 
-The Flask development server runs at:
+Once the application starts successfully, open the following URL in your browser:
 
-**http://127.0.0.1:5000**
+```text
+http://127.0.0.1:5000
+```
 
-Open this address in your browser to access the login page.
+Ensure that the configured Oracle Database instance is accessible before using the application's features.
 
-To stop the server, press `Ctrl + C` in the terminal.
+## 8. Login and User Roles
 
----
+The application supports administrator and farmer logins.
 
-## 6. Features
+### Administrator
 
-### Farmer and Crop Record Management
+The administrator can manage agricultural records and use the available database column management functionality.
 
-- View farmer details and their associated crop records.
-- Store multiple crop records for a farmer.
-- Record farmer ID, name, gender, phone number, crop name, production quantity, and price.
-- Automatically calculate the total value of a crop record.
-- Automatically classify crop production into LOW, MEDIUM, or HIGH categories.
-- Recalculate farmer status based on total production quantity.
-
-### Administrator Dashboard
-
-- View all farmer and crop records.
-- Add new crop records.
-- Update existing records.
-- Delete crop records.
-- Manage the database table structure through the table-management interface.
-- Access administrative actions that are unavailable to regular farmers.
-
-### Farmer Dashboard
-
-- Log in using the farmer's name as the username and password.
-- View only records associated with the logged-in farmer's name.
-- Access farmer and crop information in read-only mode.
-- Use a restricted interface without administrative record-management actions.
-
-### Validation and Data Consistency
-
-- Validate farmer IDs, names, gender, crop names, production quantities, and prices.
-- Reject invalid or negative production quantities and prices.
-- Calculate crop value automatically from production quantity and price.
-- Keep farmer details consistent across crop records belonging to the same farmer ID.
-- Recalculate farmer status after relevant record changes.
-- Use database transactions for record modifications.
-
-### Web Interface
-
-- Login page for authentication.
-- Dashboard for viewing agricultural records.
-- Forms for administrative record operations.
-- Separate administrative and farmer interfaces.
-- Client-side JavaScript for interacting with Flask endpoints.
-
----
-
-## 7. User Roles and Permissions
-
-The application provides two user roles.
-
-| Operation | Administrator | Farmer |
-|---|---|---|
-| View all farmer records | Yes | No |
-| View own crop records | Yes | Yes |
-| Add crop records | Yes | No |
-| Update crop records | Yes | No |
-| Delete crop records | Yes | No |
-| Manage table structure | Yes | No |
-| Access administrative actions | Yes | No |
-
-### Administrator Login
-
-The default demonstration credentials are:
+The current application code uses the following hardcoded administrator credentials:
 
 - **Username:** `admin`
 - **Password:** `admin999`
 
-### Farmer Login
+### Farmer
 
-- **Username:** The farmer's name as stored in the database.
-- **Password:** The same farmer name.
+Farmers can log in to view their own agricultural records. The farmer username must match the farmer's name in the `AGRICULTURE` table, and the password is checked against the username without case sensitivity, as implemented in the application.
 
-For example, if the farmer's name is `Ravi`, the demonstration login is:
+Farmer access is restricted to the corresponding farmer's records, and the farmer interface is read-only.
 
-- Username: `Ravi`
-- Password: `Ravi`
+## 9. Troubleshooting
 
-The farmer must have a matching record in the `AGRICULTURE` table.
+### Oracle Database Connection Errors
+- Confirm that Oracle Database is running.
+- Verify `ORACLE_USER`, `ORACLE_PASSWORD`, and `ORACLE_DSN`.
+- Check that the host, port, and service name are correct.
+- Ensure that Oracle Instant Client is installed and its path is correctly configured if Thick mode is enabled.
 
-**Note:** This is a demonstration authentication mechanism. Farmer names are not unique credentials, so a production deployment should use unique accounts and securely hashed passwords.
-
----
-
-## 8. Business Logic
-
-### Crop Value Calculation
-
-The total value of a crop record is calculated automatically:
-
-```text
-Total Value = Crop Production Quantity × Price
-```
-
-### Production Level Classification
-
-The production level is assigned according to the crop's production quantity:
-
-| Production Quantity | Production Level |
-|---|---|
-| Less than 500 | LOW |
-| 500 to 1000, inclusive | MEDIUM |
-| Greater than 1000 | HIGH |
-
-### Farmer Status Classification
-
-Farmer status is determined using the sum of the production quantities across all crop records associated with the farmer ID.
-
-| Total Production | Farmer Status |
-|---|---|
-| Less than 500 | INACTIVE |
-| 500 or greater | ACTIVE |
-
-The application recalculates farmer status when relevant crop records are added, updated, or deleted.
-
----
-
-## 9. Database Schema
-
-The application uses the `AGRICULTURE` table.
-
-| Column | Description |
-|---|---|
-| `FARMER_ID` | Identifier associated with a farmer |
-| `NAME` | Farmer's name |
-| `GENDER` | Farmer's gender |
-| `PHONE` | Farmer's contact number |
-| `CROP_NAME` | Name of the crop |
-| `CROP_VOL` | Crop production quantity |
-| `PRICE` | Price per unit |
-| `TOTAL_VALUE` | Calculated crop value |
-| `PRODUCTION_LEVEL` | LOW, MEDIUM, or HIGH |
-| `FARMER_STATUS` | ACTIVE or INACTIVE |
-
-Each row represents a crop record. A farmer can have multiple rows, with their farmer details repeated across those records.
-
----
-
-## 10. Troubleshooting
-
-### Database connection errors
-
-- Verify that Oracle Database is running.
-- Check the username, password, host, port, and service name in `app.py`.
-- Confirm that the database user has the required table privileges.
-- Verify that the `AGRICULTURE` table exists.
-
-### `ModuleNotFoundError`
-
-Install the project dependencies:
+### Missing Python Packages
+Install the project's dependencies again:
 
 ```bash
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
-Ensure that the correct Python virtual environment is activated.
+### Login Issues
+- Verify that the administrator credentials match the values configured in the application.
+- For farmer login, check that the username matches the farmer's name stored in the database.
+- Confirm that the required farmer record exists.
 
-### Oracle Thick mode errors
+### Column Management Issues
+- Ensure that the database user has the necessary permissions for the requested schema operation.
+- Verify that the selected datatype and size are supported by the application.
+- Remember that core columns cannot be renamed or deleted through the dynamic column management interface.
 
-If the application reports an Oracle Client initialization or Thick mode error:
-
-- Verify that Oracle Instant Client is installed.
-- Confirm that the `lib_dir` path points to the correct installation directory.
-- Check architecture compatibility between Python and Oracle Instant Client.
-- Restart the application after correcting the configuration.
-
-### Port already in use
-
-If port `5000` is occupied, stop the other process using it or change the port in the `app.run()` configuration.
+### Records Not Appearing
+- Confirm that the record exists in the Oracle Database.
+- Verify the farmer name used for login.
+- Check the terminal output for Flask or database errors.
