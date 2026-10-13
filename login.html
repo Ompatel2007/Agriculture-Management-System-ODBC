@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | Agriculture Management</title>
     <link rel="stylesheet" href="/style.css">
+    <script src="/script.js" defer></script>
 </head>
 <body class="login-page">
     <main class="login-card">
@@ -25,37 +26,5 @@
             <p id="loginMessage" class="message" role="status"></p>
         </form>
     </main>
-    <script>
-        const loginForm = document.getElementById("loginForm");
-        loginForm.addEventListener("submit", async (event) => {
-            event.preventDefault();
-            const message = document.getElementById("loginMessage");
-            try {
-                const response = await fetch("/api/login", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({
-                        username: document.getElementById("username").value.trim(),
-                        password: document.getElementById("password").value
-                    })
-                });
-                
-                const result = await response.json();
-
-                if (!response.ok || !result.success) {
-                    throw new Error(result.error || result.message || "Login failed.");
-                }
-
-                sessionStorage.setItem("loggedIn", "true");
-                sessionStorage.setItem("role", result.role);
-
-                window.location.replace("/agriculture");
-
-            } catch (error) {
-                message.textContent = error.message;
-                message.className = "message error";
-            }
-        });
-    </script>
 </body>
 </html>
