@@ -1,0 +1,329 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agriculture Management System</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/script.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <div>
+            <h1>Agriculture Management</h1>
+        </div>
+        <button id="logoutButton" class="button button-light" type="button">
+            Log out
+        </button>
+    </header>
+
+    <main class="page-shell">
+        <section class="intro">
+            <div>
+                <h2>Manage your farm records</h2>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="section-heading">
+                <div>
+                    <h2 id="formHeading">Add a crop record</h2>
+                </div>
+                <span id="formModeBadge" class="mode-badge">NEW RECORD</span>
+            </div>
+
+            <form id="recordForm">
+                <input id="rowId" type="hidden">
+
+                <div class="form-grid">
+                    <label>
+                        Farmer ID
+                        <input
+                            id="farmerId"
+                            name="farmer_id"
+                            type="number"
+                            min="1"
+                            required
+                            placeholder="e.g. 101"
+                        >
+                    </label>
+
+                    <label>
+                        Farmer name
+                        <input
+                            id="name"
+                            name="name"
+                            type="text"
+                            maxlength="50"
+                            required
+                            placeholder="Enter full name"
+                        >
+                    </label>
+
+                    <label>
+                        Gender
+                        <select id="gender" name="gender" required>
+                            <option value="">Select gender</option>
+                            <option value="M">Male (M)</option>
+                            <option value="F">Female (F)</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        Phone number
+                        <input
+                            id="phone"
+                            name="phone"
+                            type="tel"
+                            maxlength="15"
+                            placeholder="Contact number"
+                        >
+                    </label>
+
+                    <label>
+                        Crop name
+                        <input
+                            id="cropName"
+                            name="crop_name"
+                            type="text"
+                            maxlength="30"
+                            required
+                            placeholder="e.g. Rice"
+                        >
+                    </label>
+
+                    <label>
+                        Production quantity
+                        <input
+                            id="cropVol"
+                            name="crop_vol"
+                            type="number"
+                            min="0"
+                            step="any"
+                            required
+                            placeholder="e.g. 600"
+                        >
+                    </label>
+
+                    <label>
+                        Price per unit (₹)
+                        <input
+                            id="price"
+                            name="price"
+                            type="number"
+                            min="0"
+                            step="any"
+                            required
+                            placeholder="e.g. 40"
+                        >
+                    </label>
+                </div>
+
+                <div class="calculation-strip">
+                    <div>
+                        <span class="calc-label">Total value</span>
+                        <strong id="totalValuePreview">₹0.00</strong>
+                    </div>
+
+                    <div>
+                        <span class="calc-label">Production level</span>
+                        <strong id="productionLevelPreview">—</strong>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button
+                        id="saveButton"
+                        class="button button-primary"
+                        type="submit"
+                    >
+                        Add crop record
+                    </button>
+
+                    <button
+                        id="cancelButton"
+                        class="button button-light hidden"
+                        type="button"
+                    >
+                        Cancel edit
+                    </button>
+
+                    <button
+                        id="resetButton"
+                        class="button button-light"
+                        type="reset"
+                    >
+                        Clear form
+                    </button>
+                </div>
+            </form>
+
+            <p id="formMessage" class="message" role="status"></p>
+        </section>
+
+        
+<!-- Table Structure Management -->
+        <section class="panel">
+            <div class="section-heading">
+                <div>
+                    <h2>Table Structure</h2>
+                    <p class="muted">
+                        Manage the structure of your AGRICULTURE table.
+                    </p>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <!-- Add Column -->
+                <form id="addColumnForm">
+                    <label>
+                        New column name
+                        <input
+                            id="newColumnName"
+                            type="text"
+                            required
+                            placeholder="e.g. SOIL_TYPE"
+                            pattern="[A-Za-z][A-Za-z0-9_]*"
+                        >
+                    </label>
+
+                    <label>
+                        Datatype
+                        <select id="newColumnType" required>
+                            <option value="VARCHAR2">VARCHAR2</option>
+                            <option value="CHAR">CHAR</option>
+                            <option value="NUMBER">NUMBER</option>
+                            <option value="DATE">DATE</option>
+                        </select>
+                    </label>
+
+                    <label id="newColumnSizeLabel">
+                        Size
+                        <input
+                            id="newColumnSize"
+                            type="number"
+                            min="1"
+                            max="4000"
+                            value="50"
+                        >
+                    </label>
+
+                    <button class="button button-primary" type="submit">
+                        Add Column
+                    </button>
+                </form>
+
+                <!-- Modify Column -->
+                <form id="modifyColumnForm">
+                    <label>
+                        Select column
+                        <select id="modifyColumnName" required>
+                            <option value="">Select column</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        New datatype
+                        <select id="modifyColumnType" required>
+                            <option value="VARCHAR2">VARCHAR2</option>
+                            <option value="CHAR">CHAR</option>
+                            <option value="NUMBER">NUMBER</option>
+                            <option value="DATE">DATE</option>
+                        </select>
+                    </label>
+
+                    <label id="modifyColumnSizeLabel">
+                        New size
+                        <input
+                            id="modifyColumnSize"
+                            type="number"
+                            min="1"
+                            max="4000"
+                            value="50"
+                        >
+                    </label>
+
+                    <button class="button button-primary" type="submit">
+                        Change Datatype / Size
+                    </button>
+                </form>
+
+                <!-- Rename Column -->
+                <form id="renameColumnForm">
+                    <label>
+                        Column to rename
+                        <select id="renameColumnName" required>
+                            <option value="">Select column</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        New column name
+                        <input
+                            id="renamedColumnName"
+                            type="text"
+                            required
+                            placeholder="e.g. SOIL_TYPE"
+                            pattern="[A-Za-z][A-Za-z0-9_]*"
+                        >
+                    </label>
+
+                    <button class="button button-primary" type="submit">
+                        Rename Column
+                    </button>
+                </form>
+            </div>
+
+            <p id="structureMessage" class="message" role="status"></p>
+        </section>
+
+
+        <section class="panel records-panel">
+            <div class="section-heading records-heading">
+                <div>
+                    <h2>Crop records</h2>
+                </div>
+
+                <button
+                    id="refreshButton"
+                    class="button button-light"
+                    type="button"
+                >
+                    Refresh records
+                </button>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Farmer ID</th>
+                            <th>Name</th>
+                            <th>Gender</th>
+                            <th>Phone</th>
+                            <th>Crop</th>
+                            <th>Production</th>
+                            <th>Price/unit</th>
+                            <th>Total value</th>
+                            <th>Production level</th>
+                            <th>Farmer status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="recordsTableBody">
+                        <tr>
+                            <td colspan="11" class="empty-cell">
+                                Loading records…
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p id="tableMessage" class="message" role="status"></p>
+        </section>
+    </main>
+</body>
+</html>

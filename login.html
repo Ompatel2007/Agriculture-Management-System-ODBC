@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Agriculture Management</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body class="login-page">
+    <main class="login-card">
+        <div class="brand-mark">A</div>
+        <p class="eyebrow">FARM OPERATIONS</p>
+        <h1>Welcome back</h1>
+        <p class="muted">Sign in to open the Agriculture Management System.</p>
+        <form id="loginForm">
+            <label>
+                Username
+                <input id="username" type="text" autocomplete="username" required placeholder="Enter your username">
+            </label>
+            <label>
+                Password
+                <input id="password" type="password" autocomplete="current-password" required placeholder="Enter your password">
+            </label>
+            <button class="button button-primary button-full" type="submit">Continue</button>
+            <p id="loginMessage" class="message" role="status"></p>
+        </form>
+    </main>
+    <script>
+        const loginForm = document.getElementById("loginForm");
+        loginForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const message = document.getElementById("loginMessage");
+            try {
+                const response = await fetch("/api/login", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        username: document.getElementById("username").value.trim(),
+                        password: document.getElementById("password").value
+                    })
+                });
+                
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || result.message || "Login failed.");
+                }
+
+                sessionStorage.setItem("loggedIn", "true");
+                sessionStorage.setItem("role", result.role);
+
+                window.location.replace("/agriculture");
+
+            } catch (error) {
+                message.textContent = error.message;
+                message.className = "message error";
+            }
+        });
+    </script>
+</body>
+</html>
